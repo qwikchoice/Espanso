@@ -1,0 +1,57 @@
+{
+  "~myli": {
+    "tags": [
+      "career"
+    ],
+    "notes": "URL for linkedin"
+  },
+  "~mygit": {
+    "tags": [
+      "career"
+    ],
+    "notes": "my github repository"
+  },
+  "~jmail": {
+    "tags": [
+      "career"
+    ],
+    "notes": "Job email"
+  },
+  "~pmail": {
+    "tags": [
+      "career"
+    ],
+    "notes": "my project email"
+  },
+  ":doc_ai_prd": {
+    "tags": [
+      "aipm"
+    ],
+    "notes": "AI PM Prompt for PRD Feature Specification"
+  },
+  ":doc_ai_feasibility": {
+    "tags": [
+      "aipm"
+    ],
+    "notes": "AI PM Prompt for AI Feasibility & Opportunity Assessment"
+  },
+  ":doc_exec_deck": {
+    "tags": [
+      "aipm"
+    ],
+    "notes": "AI PM Prompt for Executive Roadmap Presentation"
+  },
+  ":app_ai_agent": {
+    "tags": [
+      "aipm"
+    ],
+    "notes": "AI PM Prompt for Autonomous Product Analytics Agent"
+  },
+  ":prt00": {
+    "tags": [
+      "aipm",
+      "career"
+    ],
+    "notes": "The R-C-A-G-T-F-C-E framework, core template"
+  }
+}

@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Espanso Manager</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+  <style>
+    :root {
+      --bg:           #111318;
+      --surface:      #1c1f2e;
+      --surface2:     #252a3a;
+      --surface3:     #2e3348;
+      --border:       #353a52;
+      --text:         #dde1f5;
+      --text-muted:   #7a82a8;
+      --accent:       #7c6fff;
+      --accent-light: rgba(124,111,255,0.14);
+      --danger:       #ff5577;
+      --danger-light: rgba(255,85,119,0.14);
+      --success:      #3ddc97;
+      --warning:      #ffc44d;
+      --radius:       10px;
+      --radius-sm:    6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    code {
+      font-family: 'Courier New', monospace;
+      background: var(--surface2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* ── LANDING ─────────────────────────────── */
+    #landing {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 20px;
+      padding: 40px;
+      text-align: center;
+    }
+    .landing-logo { font-size: 56px; }
+    .landing-title { font-size: 30px; font-weight: 700; }
+    .landing-sub {
+      color: var(--text-muted);
+      max-width: 420px;
+      line-height: 1.7;
+    }
+    .landing-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.9;
+    }
+    .browser-warn {
+      background: var(--danger-light);
+      border: 1px solid var(--danger);
+      border-radius: var(--radius-sm);
+      padding: 12px 18px;
+      color: var(--danger);
+      max-width: 420px;
+      line-height: 1.6;
+      display: none;
+    }
+
+    /* ── BUTTONS ──────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary  { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled)  { background: #9088ff; transform: translateY(-1px); }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover:not(:disabled) { background: var(--surface3); }
+    .btn-danger { background: var(--danger-light); color: var(--danger); border: 1px solid var(--danger); }
+    .btn-danger:hover:not(:disabled) { background: var(--danger); color: #fff; }
+    .btn-icon { padding: 6px 9px; background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; transition: all 0.15s; }
+    .btn-icon:hover { color: var(--text); background: var(--surface3); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-lg { padding: 13px 30px; font-size: 15px; }
+
+    /* ── APP SHELL ────────────────────────────── */
+    #app {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ───────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .header-logo { font-size: 20px; }
+    .header-title { font-weight: 700; font-size: 15px; }
+    .header-folder {
+      color: var(--text-muted);
+      font-size: 11px;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+
+    .backup-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .backup-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .backup-dot.ok { background: var(--success); }
+
+    /* ── TOOLBAR ──────────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 320px; }
+    .search-wrap input {
+      width: 100%;
+      padding: 7px 12px 7px 34px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 13px;
+    }
+    .search-wrap input:focus { outline: none; border-color: var(--accent); }
+    .search-icon {
+      position: absolute; left: 10px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px; pointer-events: none;
+    }
+
+    input, textarea, select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 13px;
+    }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+    select { padding: 7px 10px; cursor: pointer; }
+
+    .tag-filter { display: flex; gap: 5px; flex-wrap: wrap; }
+    .tag-chip {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-muted);
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .tag-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .tag-chip.active {
+      background: var(--accent-light);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .count-badge { font-size: 11px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+
+    /* ── MATCH LIST ───────────────────────────── */
+    .match-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 18px 80px;
+    }
+    .match-list::-webkit-scrollbar { width: 5px; }
+    .match-list::-webkit-scrollbar-track { background: transparent; }
+    .match-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .match-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 7px;
+      transition: border-color 0.15s;
+    }
+    .match-card:hover { border-color: #555a78; }
+
+    .match-trigger-wrap { flex-shrink: 0; padding-top: 1px; }
+    .match-trigger {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 3px 9px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .match-body { flex: 1; min-width: 0; }
+    .match-replace {
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .match-meta { display: flex; gap: 5px; margin-top: 6px; align-items: center; flex-wrap: wrap; }
+
+    .type-badge {
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .type-simple  { background: rgba(61,220,151,0.14); color: var(--success); }
+    .type-complex { background: rgba(255,196,77,0.14);  color: var(--warning); }
+
+    .match-tag {
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 10px;
+      background: var(--surface2);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .match-notes {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .match-actions { display: flex; gap: 5px; flex-shrink: 0; padding-top: 1px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 70px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state .e-icon { font-size: 44px; margin-bottom: 14px; }
+    .empty-state p { margin-top: 6px; }
+
+    /* ── FAB ─────────────────────────────────── */
+    .fab {
+      position: fixed;
+      bottom: 22px; right: 22px;
+      width: 50px; height: 50px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      font-size: 26px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(124,111,255,0.45);
+      transition: all 0.2s;
+      z-index: 10;
+      line-height: 1;
+    }
+    .fab:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(124,111,255,0.6); }
+
+    /* ── DROPDOWN ────────────────────────────── */
+    .dropdown-wrap { position: relative; }
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      min-width: 140px;
+      z-index: 50;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .dropdown-menu.show { display: block; }
+    .dropdown-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dropdown-item:hover { background: var(--surface3); }
+
+    /* ── MODAL ───────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(3px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 560px;
+      max-width: 96vw;
+      max-height: 92vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .modal-sm { width: 380px; }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .modal-title { font-size: 15px; font-weight: 600; }
+    .modal-close {
+      background: none; border: none;
+      color: var(--text-muted);
+      font-size: 18px; cursor: pointer;
+      padding: 4px 6px;
+      line-height: 1;
+      border-radius: 4px;
+      transition: all 0.1s;
+    }
+    .modal-close:hover { color: var(--text); background: var(--surface2); }
+
+    .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* ── FORM ────────────────────────────────── */
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .form-group input  { padding: 8px 11px; width: 100%; }
+    .form-group textarea {
+      padding: 9px 11px;
+      width: 100%;
+      resize: vertical;
+      line-height: 1.55;
+    }
+    .form-hint { font-size: 11px; color: var(--text-muted); }
+
+    .type-toggle { display: flex; gap: 6px; }
+    .type-toggle button {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface2);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .type-toggle button.active {
+      background: var(--accent-light);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .divider { border: none; border-top: 1px solid var(--border); }
+
+    /* ── IMPORT ──────────────────────────────── */
+    .import-drop {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .import-drop:hover, .import-drop.dragover {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+    .import-preview {
+      max-height: 180px;
+      overflow-y: auto;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 12px;
+      font-family: monospace;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* ── TOAST ───────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 22px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 18px;
+      font-size: 13px;
+      z-index: 300;
+      transition: transform 0.28s cubic-bezier(.34,1.4,.64,1);
+      white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.success { border-color: var(--success); color: var(--success); }
+    #toast.error   { border-color: var(--danger);  color: var(--danger);  }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- LANDING                                    -->
+<!-- ══════════════════════════════════════════ -->
+<div id="landing">
+  <div class="landing-logo">⚡</div>
+  <div class="landing-title">Espanso Manager</div>
+  <div class="landing-sub">
+    Visual CRUD interface for your Espanso text expansions —
+    with backups, archiving, export/import, search, tags, and notes.
+  </div>
+
+  <div class="browser-warn" id="browserWarn">
+    ⚠️ <strong>Chrome or Edge required.</strong><br>
+    This app uses the File System Access API, which is only available in
+    Google Chrome and Microsoft Edge.
+  </div>
+
+  <button class="btn btn-primary btn-lg" id="openBtn" onclick="openFolder()">
+    📂 Open Espanso Folder
+  </button>
+
+  <div class="landing-hint">
+    Grant access to your Espanso <code>match</code> folder<br>
+    <strong>Windows:</strong> <code>%AppData%\espanso\match</code><br>
+    <strong>Mac:</strong> <code>~/Library/Application Support/espanso/match</code><br>
+    Backups → same folder &nbsp;·&nbsp; Archive → <code>archive/</code> subfolder
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- MAIN APP                                   -->
+<!-- ══════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- Header -->
+  <div class="header">
+    <span class="header-logo">⚡</span>
+    <span class="header-title">Espanso Manager</span>
+    <span class="header-folder" id="folderLabel">—</span>
+
+    <div class="header-actions">
+      <div class="backup-pill" id="backupPill">
+        <span class="backup-dot" id="backupDot"></span>
+        <span id="backupLabel">No backups yet</span>
+      </div>
+
+      <!-- Export -->
+      <div class="dropdown-wrap">
+        <button class="btn btn-secondary btn-sm" onclick="toggleDropdown('exportMenu')">
+          ↑ Export ▾
+        </button>
+        <div class="dropdown-menu" id="exportMenu">
+          <div class="dropdown-item" onclick="exportAs('yaml')">📄 &nbsp;YAML</div>
+          <div class="dropdown-item" onclick="exportAs('json')">{ } &nbsp;JSON</div>
+          <div class="dropdown-item" onclick="exportAs('csv')">📊 &nbsp;CSV</div>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary btn-sm" onclick="openImportModal()">↓ Import</button>
+      <button class="btn btn-secondary btn-sm" onclick="reloadFile()" title="Reload from disk">↻ Reload</button>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Search triggers or text…"
+             oninput="handleSearch(this.value)">
+    </div>
+
+    <select id="sortSelect" onchange="handleSort(this.value)">
+      <option value="trigger">Sort: A → Z</option>
+      <option value="trigger-desc">Sort: Z → A</option>
+      <option value="type">Sort: Simple first</option>
+    </select>
+
+    <div class="tag-filter" id="tagFilter"></div>
+
+    <span class="count-badge" id="matchCount">0 expansions</span>
+  </div>
+
+  <!-- Match list -->
+  <div class="match-list" id="matchList"></div>
+
+  <!-- FAB -->
+  <button class="fab" onclick="openAddModal()" title="Add expansion">＋</button>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- ADD / EDIT MODAL                           -->
+<!-- ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Add Expansion</span>
+      <button class="modal-close" onclick="closeModal('editModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editingTrigger">
+
+      <!-- Type toggle -->
+      <div class="form-group">
+        <span class="form-label">Match Type</span>
+        <div class="type-toggle">
+          <button id="typeSimple"  onclick="setMatchType('simple')">⚡ Simple</button>
+          <button id="typeComplex" onclick="setMatchType('complex')">⚙️ Advanced (raw YAML)</button>
+        </div>
+      </div>
+
+      <!-- Simple fields -->
+      <div id="simpleFields">
+        <div class="form-group">
+          <span class="form-label">Trigger</span>
+          <input type="text" id="fieldTrigger" placeholder=":mytrigger"
+                 style="font-family: monospace; font-size: 14px;">
+        </div>
+        <div class="form-group">
+          <span class="form-label">Replace With</span>
+          <textarea id="fieldReplace" rows="4" placeholder="Text that replaces the trigger…"
+                    style="font-size: 13px;"></textarea>
+        </div>
+      </div>
+
+      <!-- Complex YAML -->
+      <div id="complexFields" style="display:none">
+        <div class="form-group">
+          <span class="form-label">Match YAML (one entry — paste without the leading "- ")</span>
+          <textarea id="fieldYaml" rows="8"
+                    style="font-family: monospace; font-size: 12px; line-height: 1.6;"
+                    placeholder="trigger: ':mydate'&#10;replace: '{{mydate}}'&#10;vars:&#10;  - name: mydate&#10;    type: date&#10;    params:&#10;      format: '%m/%d/%Y'"></textarea>
+          <span class="form-hint">Must include a <code>trigger</code> field.</span>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Tags & Notes -->
+      <div class="form-group">
+        <span class="form-label">Tags <span style="font-weight:400;text-transform:none">(comma-separated)</span></span>
+        <input type="text" id="fieldTags" placeholder="email, personal, code">
+      </div>
+      <div class="form-group">
+        <span class="form-label">Notes <span style="font-weight:400;text-transform:none">(private — not used by Espanso)</span></span>
+        <textarea id="fieldNotes" rows="2" placeholder="What's this for?"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMatch()">Save Expansion</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- IMPORT MODAL                               -->
+<!-- ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Import Expansions</span>
+      <button class="modal-close" onclick="closeModal('importModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="import-drop" id="importDrop"
+           onclick="document.getElementById('importFileInput').click()"
+           ondragover="handleDragOver(event)"
+           ondrop="handleDrop(event)"
+           ondragleave="this.classList.remove('dragover')">
+        <div style="font-size:32px; margin-bottom:8px;">📁</div>
+        <div>Drop file here or <strong>click to browse</strong></div>
+        <div style="color:var(--text-muted); font-size:12px; margin-top:4px;">
+          Supports .yml · .json · .csv
+        </div>
+      </div>
+      <input type="file" id="importFileInput" accept=".yml,.yaml,.json,.csv"
+             style="display:none" onchange="handleImportFile(this.files[0])">
+
+      <div id="importPreviewWrap" style="display:none; display:none; flex-direction:column; gap:14px;">
+        <div class="form-group">
+          <span class="form-label"><span id="importCount">0</span> matches found — preview</span>
+          <div class="import-preview" id="importPreview"></div>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">Import Mode</span>
+          <div class="type-toggle">
+            <button id="importMergeBtn"   onclick="setImportMode('merge')">Merge (add new only)</button>
+            <button id="importReplaceBtn" onclick="setImportMode('replace')">Replace all</button>
+          </div>
+          <span class="form-hint" id="importModeHint">New triggers are added; existing triggers are skipped.</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('importModal')">Cancel</button>
+      <button class="btn btn-primary" id="importConfirmBtn" disabled onclick="confirmImport()">
+        Import
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- CONFIRM MODAL                              -->
+<!-- ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <span class="modal-title" id="confirmTitle">Confirm</span>
+      <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-muted); line-height:1.65;" id="confirmMessage"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancel</button>
+      <button class="btn btn-danger" id="confirmOkBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- JAVASCRIPT                                 -->
+<!-- ══════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+const S = {
+  dirHandle:   null,       // FileSystemDirectoryHandle
+  matches:     [],         // parsed match objects
+  metadata:    {},         // { trigger: { tags:[], notes:'' } }
+  preamble:    '',         // YAML header text (before matches:)
+  search:      '',
+  tagFilter:   new Set(),
+  sortBy:      'trigger',
+  importData:  null,       // parsed matches from import file
+  importMode:  'merge',
+};
+
+const MAX_BACKUPS = 5;
+
+// ─────────────────────────────────────────────
+// MODE DETECTION
+// Server mode: running via python espanso_server.py (localhost)
+// File mode:   opened directly as file:// (File System Access API)
+// ─────────────────────────────────────────────
+const USE_API = ['localhost', '127.0.0.1'].includes(location.hostname);
+
+// ─────────────────────────────────────────────
+// BROWSER CHECK (File mode only)
+// ─────────────────────────────────────────────
+if (!USE_API && !window.showDirectoryPicker) {
+  document.getElementById('browserWarn').style.display = 'block';
+  document.getElementById('openBtn').disabled = true;
+}
+
+// Auto-launch in server mode
+if (USE_API) {
+  document.addEventListener('DOMContentLoaded', initFromApi);
+}
+
+// ─────────────────────────────────────────────
+// API HELPERS (server mode)
+// ─────────────────────────────────────────────
+async function apiGet(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function apiPost(path, data) {
+  const res = await fetch(path, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+function applyBackupInfo(data) {
+  const dot   = document.getElementById('backupDot');
+  const label = document.getElementById('backupLabel');
+  if (!data.backupCount) {
+    dot.className     = 'backup-dot';
+    label.textContent = 'No backups yet';
+  } else {
+    dot.className     = 'backup-dot ok';
+    label.textContent = `${data.backupCount} backup(s) · ${data.latestBackup || ''}`;
+  }
+}
+
+// ─────────────────────────────────────────────
+// INIT — SERVER MODE
+// ─────────────────────────────────────────────
+async function initFromApi() {
+  try {
+    const data = await apiGet('/api/load');
+    parseYamlFile(data.yaml || '');
+    S.metadata = data.meta || {};
+    document.getElementById('landing').style.display = 'none';
+    const app = document.getElementById('app');
+    app.style.display      = 'flex';
+    app.style.flexDirection = 'column';
+    document.getElementById('folderLabel').textContent = '📂 ' + (data.folder || 'espanso/match');
+    applyBackupInfo(data);
+    render();
+  } catch (e) {
+    showToast('Cannot reach server — ' + e.message, 'error');
+  }
+}
+
+// ─────────────────────────────────────────────
+// FOLDER / FILE I/O  (file mode)
+// ─────────────────────────────────────────────
+async function openFolder() {
+  if (USE_API) { await initFromApi(); return; }
+  try {
+    const dh = await window.showDirectoryPicker({ mode: 'readwrite' });
+    S.dirHandle = dh;
+    await loadFiles();
+    document.getElementById('landing').style.display = 'none';
+    const app = document.getElementById('app');
+    app.style.display      = 'flex';
+    app.style.flexDirection = 'column';
+    document.getElementById('folderLabel').textContent = '📂 ' + dh.name;
+    await refreshBackupStatus();
+  } catch (e) {
+    if (e.name !== 'AbortError') showToast('Could not open folder: ' + e.message, 'error');
+  }
+}
+
+async function loadFiles() {
+  // Load base.yml
+  try {
+    const fh   = await S.dirHandle.getFileHandle('base.yml');
+    const file  = await fh.getFile();
+    const text  = await file.text();
+    parseYamlFile(text);
+  } catch (e) {
+    showToast('Could not read base.yml — ' + e.message, 'error');
+    S.matches  = [];
+    S.preamble = '# espanso match file\n\n';
+  }
+
+  // Load metadata sidecar
+  try {
+    const mh   = await S.dirHandle.getFileHandle('base.meta.json');
+    const mf   = await mh.getFile();
+    const text = await mf.text();
+    S.metadata = JSON.parse(text);
+  } catch (_) {
+    S.metadata = {};
+  }
+
+  render();
+}
+
+function parseYamlFile(text) {
+  // Extract preamble (everything before the "matches:" key line)
+  const idx = text.indexOf('\nmatches:');
+  S.preamble = idx !== -1 ? text.slice(0, idx + 1) : '# espanso match file\n\n';
+
+  try {
+    const parsed = jsyaml.load(text);
+    S.matches = (parsed && Array.isArray(parsed.matches)) ? parsed.matches : [];
+  } catch (e) {
+    showToast('YAML parse error: ' + e.message, 'error');
+    S.matches = [];
+  }
+}
+
+async function reloadFile() {
+  if (USE_API) {
+    await initFromApi();
+    showToast('Reloaded from disk', 'success');
+    return;
+  }
+  if (!S.dirHandle) return;
+  await loadFiles();
+  await refreshBackupStatus();
+  showToast('Reloaded from disk', 'success');
+}
+
+// ─────────────────────────────────────────────
+// SAVE + BACKUP
+// ─────────────────────────────────────────────
+async function saveFile() {
+  if (USE_API) {
+    const resp = await apiPost('/api/save', {
+      yaml: buildYaml(),
+      meta: S.metadata,
+    });
+    applyBackupInfo(resp);
+    return;
+  }
+  // File System API path
+  const content = buildYaml();
+  await doBackup(content);
+  await writeFile('base.yml', content);
+  await writeFile('base.meta.json', JSON.stringify(S.metadata, null, 2));
+  await refreshBackupStatus();
+}
+
+function buildYaml() {
+  const body = jsyaml.dump({ matches: S.matches }, { lineWidth: -1, noRefs: true, indent: 2 });
+  return S.preamble + body;
+}
+
+async function doBackup(content) {
+  // Create timestamp-named backup
+  const ts   = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
+  const name = `base_backup_${ts}.yml`;
+  await writeFile(name, content);
+
+  // Collect all backup filenames
+  const backups = [];
+  for await (const [n] of S.dirHandle.entries()) {
+    if (n.startsWith('base_backup_') && n.endsWith('.yml')) backups.push(n);
+  }
+  backups.sort(); // lexicographic ≡ chronological
+
+  // Move excess backups to archive/
+  if (backups.length > MAX_BACKUPS) {
+    const toArchive = backups.slice(0, backups.length - MAX_BACKUPS);
+    let archDir;
+    try { archDir = await S.dirHandle.getDirectoryHandle('archive', { create: true }); }
+    catch (_) { return; }
+
+    for (const bName of toArchive) {
+      try {
+        const srcH  = await S.dirHandle.getFileHandle(bName);
+        const srcF  = await srcH.getFile();
+        const text  = await srcF.text();
+        const dstH  = await archDir.getFileHandle(bName, { create: true });
+        const writable = await dstH.createWritable();
+        await writable.write(text);
+        await writable.close();
+        await S.dirHandle.removeEntry(bName);
+      } catch (_) { /* skip */ }
+    }
+  }
+}
+
+async function writeFile(name, content) {
+  const fh  = await S.dirHandle.getFileHandle(name, { create: true });
+  const wr  = await fh.createWritable();
+  await wr.write(content);
+  await wr.close();
+}
+
+async function refreshBackupStatus() {
+  if (!S.dirHandle) return;
+  const backups = [];
+  for await (const [n] of S.dirHandle.entries()) {
+    if (n.startsWith('base_backup_') && n.endsWith('.yml')) backups.push(n);
+  }
+  const dot   = document.getElementById('backupDot');
+  const label = document.getElementById('backupLabel');
+  if (backups.length === 0) {
+    dot.className   = 'backup-dot';
+    label.textContent = 'No backups yet';
+  } else {
+    const latest = backups.sort().at(-1)
+      .replace('base_backup_', '').replace('.yml', '').replace('_', ' ');
+    dot.className   = 'backup-dot ok';
+    label.textContent = `${backups.length} backup(s) · ${latest}`;
+  }
+}
+
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
+function triggerOf(m) {
+  return m.trigger ?? (Array.isArray(m.triggers) ? m.triggers[0] : null) ?? '';
+}
+
+function isSimple(m) {
+  const keys = Object.keys(m);
+  return keys.length === 2
+    && 'trigger' in m && 'replace' in m
+    && typeof m.trigger === 'string'
+    && typeof m.replace === 'string';
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────
+// CRUD — ADD / EDIT
+// ─────────────────────────────────────────────
+function openAddModal() {
+  document.getElementById('modalTitle').textContent = 'Add Expansion';
+  document.getElementById('editingTrigger').value   = '';
+  document.getElementById('fieldTrigger').value     = '';
+  document.getElementById('fieldReplace').value     = '';
+  document.getElementById('fieldYaml').value        = '';
+  document.getElementById('fieldTags').value        = '';
+  document.getElementById('fieldNotes').value       = '';
+  setMatchType('simple');
+  openModal('editModal');
+  setTimeout(() => document.getElementById('fieldTrigger').focus(), 80);
+}
+
+function openEditModal(trigger) {
+  const match = S.matches.find(m => triggerOf(m) === trigger);
+  if (!match) return;
+  const meta = S.metadata[trigger] || {};
+
+  document.getElementById('modalTitle').textContent = 'Edit Expansion';
+  document.getElementById('editingTrigger').value   = trigger;
+  document.getElementById('fieldTags').value        = (meta.tags || []).join(', ');
+  document.getElementById('fieldNotes').value       = meta.notes || '';
+
+  if (isSimple(match)) {
+    setMatchType('simple');
+    document.getElementById('fieldTrigger').value = match.trigger;
+    document.getElementById('fieldReplace').value = match.replace;
+  } else {
+    setMatchType('complex');
+    document.getElementById('fieldYaml').value =
+      jsyaml.dump(match, { lineWidth: -1, indent: 2 }).trim();
+  }
+
+  openModal('editModal');
+}
+
+function setMatchType(type) {
+  const simple  = type === 'simple';
+  document.getElementById('typeSimple').classList.toggle('active',  simple);
+  document.getElementById('typeComplex').classList.toggle('active', !simple);
+  document.getElementById('simpleFields').style.display  = simple ? '' : 'none';
+  document.getElementById('complexFields').style.display = simple ? 'none' : '';
+}
+
+function getMatchType() {
+  return document.getElementById('typeSimple').classList.contains('active') ? 'simple' : 'complex';
+}
+
+async function saveMatch() {
+  const type    = getMatchType();
+  const origTr  = document.getElementById('editingTrigger').value;
+  const tags    = document.getElementById('fieldTags').value
+                    .split(',').map(t => t.trim()).filter(Boolean);
+  const notes   = document.getElementById('fieldNotes').value.trim();
+
+  let match, trigger;
+
+  if (type === 'simple') {
+    trigger = document.getElementById('fieldTrigger').value.trim();
+    const replace = document.getElementById('fieldReplace').value;
+    if (!trigger) { showToast('Trigger cannot be empty', 'error'); return; }
+    match = { trigger, replace };
+  } else {
+    const raw = document.getElementById('fieldYaml').value.trim();
+    try {
+      match = jsyaml.load(raw);
+      trigger = triggerOf(match);
+      if (!trigger) { showToast('YAML must include a "trigger" field', 'error'); return; }
+    } catch (e) {
+      showToast('Invalid YAML: ' + e.message, 'error');
+      return;
+    }
+  }
+
+  // Duplicate check (skip if trigger didn't change)
+  if (trigger !== origTr) {
+    if (S.matches.some(m => triggerOf(m) === trigger)) {
+      showToast(`Trigger "${trigger}" already exists`, 'error');
+      return;
+    }
+  }
+
+  // Remove old entry (editing)
+  if (origTr) {
+    const idx = S.matches.findIndex(m => triggerOf(m) === origTr);
+    if (idx !== -1) S.matches.splice(idx, 1);
+    if (origTr !== trigger) delete S.metadata[origTr];
+  }
+
+  S.matches.push(match);
+  S.metadata[trigger] = { tags, notes };
+
+  await saveFile();
+  closeModal('editModal');
+  render();
+  showToast(origTr ? 'Expansion updated ✓' : 'Expansion added ✓', 'success');
+}
+
+// ─────────────────────────────────────────────
+// CRUD — DELETE
+// ─────────────────────────────────────────────
+function confirmDelete(trigger) {
+  document.getElementById('confirmTitle').textContent   = 'Delete Expansion';
+  document.getElementById('confirmMessage').textContent =
+    `Delete "${trigger}"? This cannot be undone — but a backup of the current file will be created first.`;
+  document.getElementById('confirmOkBtn').textContent  = 'Delete';
+  document.getElementById('confirmOkBtn').onclick = async () => {
+    const idx = S.matches.findIndex(m => triggerOf(m) === trigger);
+    if (idx !== -1) S.matches.splice(idx, 1);
+    delete S.metadata[trigger];
+    await saveFile();
+    closeModal('confirmModal');
+    render();
+    showToast('Expansion deleted', 'success');
+  };
+  openModal('confirmModal');
+}
+
+// ─────────────────────────────────────────────
+// EXPORT
+// ─────────────────────────────────────────────
+function exportAs(fmt) {
+  closeDropdown('exportMenu');
+
+  if (fmt === 'yaml') {
+    triggerDownload('base_export.yml', buildYaml(), 'text/yaml');
+
+  } else if (fmt === 'json') {
+    const data = S.matches.map(m => ({
+      ...m,
+      _meta: S.metadata[triggerOf(m)] || {}
+    }));
+    triggerDownload('espanso_export.json', JSON.stringify(data, null, 2), 'application/json');
+
+  } else if (fmt === 'csv') {
+    const rows = [['trigger','replace','type','tags','notes']];
+    for (const m of S.matches) {
+      const tr   = triggerOf(m);
+      const repl = isSimple(m) ? (m.replace || '') : '[complex match]';
+      const meta = S.metadata[tr] || {};
+      rows.push([
+        csvCell(tr),
+        csvCell(repl),
+        isSimple(m) ? 'simple' : 'complex',
+        csvCell((meta.tags || []).join(', ')),
+        csvCell(meta.notes || '')
+      ]);
+    }
+    triggerDownload('espanso_export.csv', rows.map(r => r.join(',')).join('\r\n'), 'text/csv');
+  }
+
+  showToast(`Exported as ${fmt.toUpperCase()}`, 'success');
+}
+
+function csvCell(s) { return '"' + String(s).replace(/"/g, '""') + '"'; }
+
+function triggerDownload(filename, content, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a   = Object.assign(document.createElement('a'), { href: url, download: filename });
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─────────────────────────────────────────────
+// IMPORT
+// ─────────────────────────────────────────────
+function openImportModal() {
+  S.importData = null;
+  S.importMode = 'merge';
+  document.getElementById('importPreviewWrap').style.display = 'none';
+  document.getElementById('importConfirmBtn').disabled = true;
+  document.getElementById('importFileInput').value = '';
+  document.getElementById('importDrop').classList.remove('dragover');
+  setImportMode('merge');
+  openModal('importModal');
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('importDrop').classList.add('dragover');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('importDrop').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) processImportFile(file);
+}
+
+function handleImportFile(file) { if (file) processImportFile(file); }
+
+async function processImportFile(file) {
+  const text = await file.text();
+  const ext  = file.name.split('.').pop().toLowerCase();
+  try {
+    if (ext === 'yml' || ext === 'yaml') {
+      const parsed = jsyaml.load(text);
+      S.importData = parsed.matches || [];
+
+    } else if (ext === 'json') {
+      let data = JSON.parse(text);
+      if (!Array.isArray(data)) data = data.matches || [];
+      // Strip _meta from each entry
+      S.importData = data.map(({ _meta, ...m }) => m);
+
+    } else if (ext === 'csv') {
+      const lines = text.trim().split(/\r?\n/);
+      S.importData = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i]);
+        if (cols.length >= 2 && cols[0]) {
+          S.importData.push({ trigger: cols[0], replace: cols[1] });
+        }
+      }
+    } else {
+      showToast('Unsupported file type', 'error');
+      return;
+    }
+
+    // Preview
+    const preview = S.importData.slice(0, 12).map(m =>
+      `${triggerOf(m)}  →  ${(m.replace || '[complex]').slice(0,60)}`
+    ).join('\n') + (S.importData.length > 12 ? `\n… and ${S.importData.length - 12} more` : '');
+
+    document.getElementById('importCount').textContent = S.importData.length;
+    document.getElementById('importPreview').textContent = preview;
+    document.getElementById('importPreviewWrap').style.display = 'flex';
+    document.getElementById('importConfirmBtn').disabled = false;
+
+  } catch (e) {
+    showToast('Parse error: ' + e.message, 'error');
+  }
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (const ch of line) {
+    if (ch === '"') { inQ = !inQ; continue; }
+    if (ch === ',' && !inQ) { result.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  result.push(cur);
+  return result;
+}
+
+function setImportMode(mode) {
+  S.importMode = mode;
+  document.getElementById('importMergeBtn').classList.toggle('active',   mode === 'merge');
+  document.getElementById('importReplaceBtn').classList.toggle('active', mode === 'replace');
+  document.getElementById('importModeHint').textContent = mode === 'merge'
+    ? 'New triggers are added; existing triggers are skipped.'
+    : 'All current expansions will be replaced with the imported file.';
+}
+
+async function confirmImport() {
+  if (!S.importData) return;
+  if (S.importMode === 'replace') {
+    S.matches = S.importData;
+  } else {
+    const existing = new Set(S.matches.map(triggerOf));
+    for (const m of S.importData) {
+      const tr = triggerOf(m);
+      if (!existing.has(tr)) { S.matches.push(m); existing.add(tr); }
+    }
+  }
+  await saveFile();
+  closeModal('importModal');
+  render();
+  showToast(`Imported ${S.importData.length} expansion(s)`, 'success');
+  S.importData = null;
+}
+
+// ─────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────
+function getFiltered() {
+  let list = [...S.matches];
+
+  if (S.search) {
+    const q = S.search.toLowerCase();
+    list = list.filter(m =>
+      triggerOf(m).toLowerCase().includes(q) ||
+      (m.replace || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (S.tagFilter.size > 0) {
+    list = list.filter(m => {
+      const tags = new Set(S.metadata[triggerOf(m)]?.tags || []);
+      return [...S.tagFilter].every(t => tags.has(t));
+    });
+  }
+
+  list.sort((a, b) => {
+    const ta = triggerOf(a).toLowerCase();
+    const tb = triggerOf(b).toLowerCase();
+    if (S.sortBy === 'trigger')      return ta.localeCompare(tb);
+    if (S.sortBy === 'trigger-desc') return tb.localeCompare(ta);
+    if (S.sortBy === 'type') {
+      const diff = (isSimple(a) ? 0 : 1) - (isSimple(b) ? 0 : 1);
+      return diff || ta.localeCompare(tb);
+    }
+    return 0;
+  });
+
+  return list;
+}
+
+function allTags() {
+  const tags = new Set();
+  for (const m of Object.values(S.metadata)) (m.tags || []).forEach(t => tags.add(t));
+  return [...tags].sort();
+}
+
+function render() {
+  renderTagFilter();
+  renderList();
+}
+
+function renderTagFilter() {
+  const tags = allTags();
+  const wrap = document.getElementById('tagFilter');
+  wrap.innerHTML = '';
+  if (!tags.length) return;
+
+  const addChip = (label, active, onClick) => {
+    const el = document.createElement('div');
+    el.className = 'tag-chip' + (active ? ' active' : '');
+    el.textContent = label;
+    el.onclick = onClick;
+    wrap.appendChild(el);
+  };
+
+  addChip('All', S.tagFilter.size === 0, () => { S.tagFilter.clear(); render(); });
+  for (const t of tags) {
+    addChip(t, S.tagFilter.has(t), () => {
+      S.tagFilter.has(t) ? S.tagFilter.delete(t) : S.tagFilter.add(t);
+      render();
+    });
+  }
+}
+
+function renderList() {
+  const list  = getFiltered();
+  const wrap  = document.getElementById('matchList');
+  document.getElementById('matchCount').textContent =
+    `${list.length} of ${S.matches.length} expansion${S.matches.length !== 1 ? 's' : ''}`;
+
+  if (!list.length) {
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <div class="e-icon">${S.matches.length === 0 ? '📭' : '🔍'}</div>
+        <strong>${S.matches.length === 0 ? 'No expansions yet' : 'No matches found'}</strong>
+        <p>${S.matches.length === 0 ? 'Click ＋ to add your first expansion.' : 'Try a different search or clear the filter.'}</p>
+      </div>`;
+    return;
+  }
+
+  wrap.innerHTML = list.map(m => {
+    const tr      = triggerOf(m);
+    const simple  = isSimple(m);
+    const preview = simple
+      ? esc((m.replace || '').replace(/\n/g, ' ↵ ').slice(0, 90))
+      : '<em style="color:var(--text-muted)">complex match — has variables / shell / form</em>';
+    const meta    = S.metadata[tr] || {};
+    const tags    = (meta.tags || []).map(t => `<span class="match-tag">${esc(t)}</span>`).join('');
+    const notes   = meta.notes ? `<div class="match-notes">📝 ${esc(meta.notes)}</div>` : '';
+
+    return `
+      <div class="match-card" data-trigger="${esc(tr)}">
+        <div class="match-trigger-wrap">
+          <span class="match-trigger">${esc(tr)}</span>
+        </div>
+        <div class="match-body">
+          <div class="match-replace">${preview}</div>
+          <div class="match-meta">
+            <span class="type-badge ${simple ? 'type-simple' : 'type-complex'}">
+              ${simple ? 'simple' : 'advanced'}
+            </span>
+            ${tags}
+          </div>
+          ${notes}
+        </div>
+        <div class="match-actions">
+          <button class="btn-icon match-edit"   title="Edit">✏️</button>
+          <button class="btn-icon match-delete" title="Delete">🗑️</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// Event delegation for match cards
+document.getElementById('matchList').addEventListener('click', e => {
+  const card = e.target.closest('.match-card');
+  if (!card) return;
+  const trigger = card.dataset.trigger;
+  if (e.target.closest('.match-edit'))   openEditModal(trigger);
+  if (e.target.closest('.match-delete')) confirmDelete(trigger);
+});
+
+// ─────────────────────────────────────────────
+// FILTER HANDLERS
+// ─────────────────────────────────────────────
+function handleSearch(val) { S.search = val; renderList(); }
+function handleSort(val)   { S.sortBy = val; renderList(); }
+
+// ─────────────────────────────────────────────
+// MODAL HELPERS
+// ─────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+document.querySelectorAll('.modal-overlay').forEach(ov =>
+  ov.addEventListener('click', e => { if (e.target === ov) closeModal(ov.id); })
+);
+
+// ─────────────────────────────────────────────
+// DROPDOWN
+// ─────────────────────────────────────────────
+function toggleDropdown(id) {
+  document.getElementById(id).classList.toggle('show');
+}
+function closeDropdown(id) {
+  document.getElementById(id).classList.remove('show');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.dropdown-wrap'))
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+});
+
+// ─────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────
+let _toastTimer;
+function showToast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 2800);
+}
+
+// ─────────────────────────────────────────────
+// KEYBOARD
+// ─────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.show').forEach(m => closeModal(m.id));
+    document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
+  }
+});
+</script>
+</body>
+</html>
