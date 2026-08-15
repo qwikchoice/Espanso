@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Espanso Manager — local API server
 No external packages required (stdlib only).

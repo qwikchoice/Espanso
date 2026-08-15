@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 title Espanso Manager
 cd /d "%~dp0"
 

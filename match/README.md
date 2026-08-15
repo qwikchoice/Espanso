@@ -1,4 +1,4 @@
-# Espanso Manager
+﻿# Espanso Manager
 
 Visual CRUD interface for Espanso text expansions — backups, archiving, export/import, search, tags, and notes.
 

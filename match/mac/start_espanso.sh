@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 cd "$(dirname "$0")/.."
 
 if ! python3 --version &>/dev/null; then
